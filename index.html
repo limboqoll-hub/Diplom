@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonCraft Pro & 3D Editor</title>
+</head>
+<body>
+
+<header class="top-bar d-flex align-items-center justify-content-between px-3 border-bottom">
+    <div class="logo">🔠 NEON<span>CRAFT</span></div>
+    <div class="project-name">Конструктор вывесок PRO</div>
+    <div class="actions">
+        <button class="btn btn-outline-light btn-sm mode-active" id="btn-mode-2d" onclick="switchMode('2d')">2D ЧЕРТЕЖ</button>
+        <button class="btn btn-outline-info btn-sm" id="btn-mode-3d" onclick="switchMode('3d')">3D ОБЪЕМ <i class="fas fa-cube"></i></button>
+        <button class="btn-save ms-3" onclick="exportAsImage()">СКАЧАТЬ PNG</button>
+    </div>
+</header>
+
+<div class="editor-wrapper d-flex">
+    <!-- ЛЕВАЯ ПАНЕЛЬ -->
+    <aside class="sidebar-left d-flex flex-column overflow-y-auto p-3" id="sidebar-left">
+        <div class="tool-group">
+            <label>ИНСТРУМЕНТЫ</label>
+            <div class="d-flex flex-wrap gap-1 mb-2">
+                <button class="tool-btn d-flex align-items-center justify-content-center active" id="btn-select" title="Выделение">↖</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-text" title="Добавить текст">T</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-line" title="Прямая линия">/</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-rect" title="Прямоугольник">□</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-curve" title="Изогнутый неон">S</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-bg-brush" title="Кисть подложки">🖌️</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-bg-eraser" title="Ластик подложки">✂️</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-undo" title="Назад (Ctrl+Z)">↶</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center text-danger" id="btn-clear" title="Очистить">✖</button>
+            </div>
+            <button id="btn-group" class="btn btn-secondary btn-sm w-100 mt-1" disabled>
+                <i class="fas fa-object-group"></i> Сгруппировать
+            </button>
+            <button id="btn-ungroup" class="btn btn-danger btn-sm w-100 mt-1" style="display: none;">
+                <i class="fas fa-object-ungroup"></i> Разгруппировать
+            </button>
+        </div>
+
+        <div class="tool-group mt-3">
+            <label>ИЗОБРАЖЕНИЕ</label>
+            <input type="file" id="imageLoader" accept="image/*" style="display: none;">
+            <button class="btn btn-outline-warning btn-sm w-100" onclick="document.getElementById('imageLoader').click()">
+                📁 ЗАГРУЗИТЬ ФОТО
+            </button>
+        </div>
+
+        <div class="tool-group mt-4 flex-grow-1">
+            <label>СВОЙСТВА ОБЪЕКТА</label>
+            <div class="prop-item mb-3">
+                <span>Текст:</span>
+                <input type="text" id="mainInput" value="TEXT">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Ориентация:</span>
+                <select id="textOrientation" class="form-select bg-dark text-white border-secondary">
+                    <option value="horizontal">Горизонтально</option>
+                    <option value="vertical">Вертикально</option>
+                </select>
+            </div>
+            <div class="prop-item mb-3">
+                <span>Шрифт:</span>
+                <select id="fontSelect" class="form-select bg-dark text-white border-secondary">
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Bebas Neue">Bebas Neue</option>
+                    <option value="Pacifico">Pacifico</option>
+                    <option value="Ruslan Display">Ruslan</option>
+                </select>
+            </div>
+            <div class="prop-item mb-3">
+                <span>Размер шрифта:</span>
+                <input type="range" id="sizeSlider" min="20" max="150" value="60">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Толщина неона (мм):</span>
+                <input type="range" id="thicknessSlider" min="2" max="40" value="10">
+                <small id="thicknessVal" class="text-warning">10 мм</small>
+            </div>
+            <div class="prop-item mb-3">
+                <span>Цвет неона:</span>
+                <input type="color" id="colorPicker" value="#ffcc00" class="w-100">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Прозрачность:</span>
+                <input type="number" id="opacityInput" min="0" max="1" step="0.1" value="1.0" class="w-100 text-center bg-dark text-white border-secondary">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Цвет окантовки:</span>
+                <input type="color" id="outlinePicker" value="#000000" class="w-100">
+            </div>
+        </div>
+
+        <div class="status-value mt-auto pt-3">
+            <label>ОБЪЕКТОВ: <span id="objCount" class="text-warning">0</span></label>
+        </div>
+    </aside>
+
+    <!-- ЦЕНТР: Canvas 2D и Canvas 3D -->
+    <main class="canvas-area d-flex flex-grow-1 align-items-center justify-content-center overflow-hidden position-relative">
+        <canvas id="paintCanvas"></canvas>
+        <div id="container3d"></div>
+        <div class="status-bar d-flex align-items-center px-3 gap-3 position-absolute bottom-0 w-100">
+            <span id="hint">Режим Select: клик — выделить. Двойной клик по тексту — изменить слово.</span>
+            <span>Координаты: <b id="coords">0, 0</b></span>
+        </div>
+    </main>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ 2D -->
+    <aside class="sidebar-right d-flex flex-column overflow-y-auto p-3" id="sidebar-right-2d">
+        <h6 class="text-warning mb-3">МАСТЕР ПОДЛОЖКИ</h6>
+        <span style="font-size: 11px; color: gray; display:block; margin-bottom: 10px;">Настройки применяются к выделенному слою</span>
+
+        <div class="prop-item mb-3">
+            <span>Тип подложки:</span>
+            <select id="bgTypeSelect" class="form-select bg-dark text-white border-secondary">
+                <option value="none">Нет подложки</option>
+                <option value="rect">Прямоугольная</option>
+                <option value="contour">По контуру</option>
+            </select>
+        </div>
+        <div class="prop-item mb-3">
+            <span>Цвет подложки:</span>
+            <input type="color" id="bg-color-picker" value="#000000" class="w-100">
+        </div>
+        <div class="prop-item mb-3">
+            <span>Отступ (px):</span>
+            <input type="range" id="bgPadding" min="10" max="100" value="40">
+        </div>
+
+        <div class="manual-edit mt-4 d-flex flex-column gap-2">
+            <button class="btn btn-outline-light btn-sm w-100" onclick="distortBacking()">Искривить подложку</button>
+            <button class="btn btn-outline-light btn-sm w-100" onclick="fillGaps()">Залить пустоты</button>
+        </div>
+
+        <hr class="border-secondary mt-4 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="text-info m-0"><i class="fas fa-layer-group"></i> СЛОИ</h6>
+            <span style="font-size: 10px; color: gray;">Выше = ближе к вам</span>
+        </div>
+        <div id="layersPanel" class="layers-container overflow-y-auto rounded p-1"></div>
+    </aside>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ 3D -->
+    <aside class="sidebar-right sidebar-right-3d flex-column overflow-y-auto p-3" id="sidebar-right-3d">
+        <h6 class="text-info mb-3"><i class="fas fa-cube"></i> СВОЙСТВА 3D-ОБЪЕКТА</h6>
+        <span style="font-size: 11px; color: gray; display:block; margin-bottom: 10px;">Кликните на объект в 3D сцене</span>
+
+        <div class="prop-item mb-3">
+            <span>Тип материала:</span>
+            <select id="materialType3D" class="form-select bg-dark text-white border-secondary">
+                <option value="neon">Светящийся неон</option>
+                <option value="plastic">Матовый пластик / Акрил</option>
+                <option value="metal">Металл</option>
+            </select>
+        </div>
+        <div class="prop-item mt-3">
+            <span>Глубина (Объем):</span>
+            <input type="range" id="depth3D" min="1" max="100" value="20">
+            <small id="depthVal3D" class="text-info">20 мм</small>
+        </div>
+        <div class="prop-item mt-3">
+            <span>Высота от стены (Z-ось):</span>
+            <input type="range" id="zOffset3D" min="0" max="50" value="0">
+            <small id="zOffsetVal3D" class="text-info">0 мм</small>
+        </div>
+
+        <hr class="border-secondary mt-4">
+        <button class="btn btn-outline-success w-100" onclick="alert('Рендер реалистичной картинки...')">📸 Фотореалистичный рендер</button>
+    </aside>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
+
+

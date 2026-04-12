@@ -1,0 +1,209 @@
+﻿/* ======================== CSS-ПЕРЕМЕННЫЕ ======================== */
+:root {
+  --bg-dark: #1a110a;
+  --panel-bg: #2d1e14;
+  --accent: #ffcc00;
+  --border: #3d2b1f;
+}
+
+/* ======================== БАЗОВЫЕ СТИЛИ ======================== */
+body,
+html {
+  height: 100%;
+  background: var(--bg-dark);
+  color: white;
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+}
+
+/* ======================== ШАПКА ======================== */
+/* d-flex align-items-center justify-content-between px-3 border-bottom — в HTML */
+.top-bar {
+  height: 50px;
+  background: var(--panel-bg);
+  border-color: var(--border) !important;
+}
+.logo {
+  font-size: 18px;
+}
+.logo span {
+  color: var(--accent);
+  font-weight: bold;
+}
+.project-name {
+  color: #8d7d70;
+  font-size: 14px;
+}
+
+/* ======================== РАСКЛАДКА ======================== */
+/* d-flex — в HTML */
+.editor-wrapper {
+  height: calc(100vh - 50px);
+  width: 100vw;
+}
+
+/* d-flex flex-column overflow-y-auto p-3 — в HTML */
+.sidebar-left {
+  width: 280px;
+  min-width: 280px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+}
+
+/* d-flex flex-column overflow-y-auto p-3 — в HTML */
+.sidebar-right {
+  width: 260px;
+  min-width: 260px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+}
+
+/* d-flex flex-grow-1 align-items-center justify-content-center overflow-hidden position-relative — в HTML */
+.canvas-area {
+  background: #e0e0e0;
+}
+
+#paintCanvas {
+  background-color: #fff;
+  background-image: radial-gradient(#ccc 1px, transparent 1px);
+  background-size: 20px 20px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+  cursor: crosshair;
+}
+
+/* ======================== ИНСТРУМЕНТЫ ======================== */
+.tool-group label {
+  font-size: 10px;
+  color: #8d7d70;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+/* d-flex align-items-center justify-content-center — в HTML */
+.tool-btn {
+  width: 42px;
+  height: 42px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 18px;
+}
+.tool-btn:hover {
+  background: #3d2b1f;
+}
+.tool-btn.active {
+  background: var(--accent) !important;
+  color: var(--bg-dark) !important;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+}
+
+/* ======================== СВОЙСТВА ОБЪЕКТА ======================== */
+/* mb-3 d-block mb-1 — в HTML */
+.prop-item span {
+  font-size: 11px;
+  color: #8d7d70;
+}
+
+/* w-100 — в HTML */
+.prop-item input[type="text"],
+.prop-item select,
+.prop-item input[type="range"],
+.prop-item input[type="color"],
+.prop-item input[type="number"] {
+  width: 100%;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: white;
+  padding: 6px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+/* ======================== СТАТУС-БАР ======================== */
+/* d-flex align-items-center px-3 gap-3 position-absolute bottom-0 w-100 — в HTML */
+.status-bar {
+  height: 30px;
+  background: #f0f0f0;
+  border-top: 1px solid #ccc;
+  font-size: 12px;
+  color: #333;
+  z-index: 10;
+}
+
+/* ======================== КНОПКА СОХРАНЕНИЯ ======================== */
+.btn-save {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 5px 15px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 4px;
+}
+.btn-save:hover {
+  background: rgba(255, 204, 0, 0.1);
+}
+
+/* ======================== СЛОИ ======================== */
+/* overflow-y-auto rounded p-1 — в HTML */
+.layers-container {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  max-height: 250px;
+}
+
+/* d-flex justify-content-between align-items-center rounded mb-1 px-2 py-1 — в JS */
+.layer-item {
+  background: #333;
+  font-size: 13px;
+  color: #ddd;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.layer-item:hover {
+  background: #3a3a3a;
+}
+.layer-item.active {
+  background: #3a4a5a;
+  border-left-color: #0d6efd;
+}
+
+.layer-actions button {
+  background: none;
+  border: none;
+  color: #888;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+.layer-actions button:hover {
+  color: #fff;
+}
+.layer-actions .btn-delete:hover {
+  color: #dc3545;
+}
+
+/* ======================== 3D-РЕЖИМ ======================== */
+#container3d {
+  display: none;
+  width: 100%;
+  height: calc(100% - 30px);
+  background: #111;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+}
+.sidebar-right-3d {
+  display: none;
+}
+.mode-active {
+  background: #0d6efd !important;
+  color: white !important;
+  border-color: #0d6efd !important;
+}

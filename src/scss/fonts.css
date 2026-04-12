@@ -1,0 +1,19 @@
+/* ======================== GOOGLE FONTS (via Fontsource) ======================== */
+
+/* Montserrat Bold 700 */
+@import "@fontsource/montserrat/700.css";
+
+/* Oswald Bold 700 */
+@import "@fontsource/oswald/700.css";
+
+/* Pacifico Regular 400 */
+@import "@fontsource/pacifico/400.css";
+
+/* Ruslan Display Regular 400 */
+@import "@fontsource/ruslan-display/400.css";
+
+/* Bebas Neue Regular 400 */
+@import "@fontsource/bebas-neue/400.css";
+
+/* ======================== FONT AWESOME ======================== */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
