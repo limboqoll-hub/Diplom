@@ -501,7 +501,7 @@ export function updateLayersPanel() {
     }
   }
 
-  logicalLayers.forEach((layer) => {
+  logicalLayers.forEach((layer, idx) => {
     const div = document.createElement("div");
     div.className = `layer-item d-flex justify-content-between align-items-center rounded mb-1 px-2 py-1 ${state.selectedObj && (state.selectedObj.id === layer.id || state.selectedObj.groupId === layer.id) ? "active" : ""}`;
     div.innerHTML = `
@@ -512,12 +512,72 @@ export function updateLayersPanel() {
                 <button class="btn-delete" title="Удалить" onclick="deleteLayer('${layer.id}', ${layer.isGroup})"><i class="fas fa-trash"></i></button>
             </div>
         `;
+
+    // Enable native drag & drop on layer items
+    div.setAttribute("draggable", "true");
+    div.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData(
+        "text/plain",
+        JSON.stringify({ id: layer.id, isGroup: layer.isGroup, srcIndex: idx }),
+      );
+      e.dataTransfer.effectAllowed = "move";
+      div.classList.add("dragging");
+    });
+
+    div.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      div.classList.add("drag-over");
+    });
+
+    div.addEventListener("dragleave", () => div.classList.remove("drag-over"));
+
+    div.addEventListener("drop", (e) => {
+      e.preventDefault();
+      div.classList.remove("drag-over");
+      let data;
+      try {
+        data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      } catch (err) {
+        return;
+      }
+      const srcIdx = data.srcIndex;
+      const destIdx = idx;
+      if (srcIdx === destIdx) return;
+
+      // Reorder logicalLayers according to drag result
+      const newLogical = [...logicalLayers];
+      const [moved] = newLogical.splice(srcIdx, 1);
+      newLogical.splice(destIdx, 0, moved);
+
+      // Rebuild state.objects from new logical order (bottom -> top)
+      const newObjects = [];
+      for (let j = newLogical.length - 1; j >= 0; j--) {
+        const L = newLogical[j];
+        if (L.isGroup) {
+          state.objects.forEach((o) => {
+            if (o.groupId === L.id) newObjects.push(o);
+          });
+        } else {
+          state.objects.forEach((o) => {
+            if (o.id === L.id) newObjects.push(o);
+          });
+        }
+      }
+
+      saveHistory();
+      state.objects = newObjects;
+      state.selectedObj = null;
+      state.selectedObjects = [];
+      render();
+    });
+
+    div.addEventListener("dragend", () => div.classList.remove("dragging"));
+
     div.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
       if (layer.isGroup) {
-        state.selectedObjects = state.objects.filter(
-          (o) => o.groupId === layer.id,
-        );
+        state.selectedObjects = state.objects.filter((o) => o.groupId === layer.id);
         state.selectedObj = state.selectedObjects[0];
       } else {
         state.selectedObj = state.objects.find((o) => o.id === layer.id);
@@ -525,6 +585,7 @@ export function updateLayersPanel() {
       }
       render();
     });
+
     panel.appendChild(div);
   });
 }

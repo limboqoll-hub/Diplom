@@ -188,6 +188,15 @@ html {
   color: #dc3545;
 }
 
+/* Drag & drop visuals for layer items */
+.layer-item.drag-over {
+  outline: 2px dashed rgba(13, 110, 253, 0.6);
+  background: #3f4f63;
+}
+.layer-item.dragging {
+  opacity: 0.6;
+}
+
 /* ======================== 3D-РЕЖИМ ======================== */
 #container3d {
   display: none;

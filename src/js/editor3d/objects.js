@@ -23,9 +23,15 @@ export function generate3DBackground(obj, cx, cy) {
   let shape = new THREE.Shape();
 
   if (obj.type === "text") {
-    ctx.font = `bold ${obj.size}px "${obj.font || "Montserrat"}"`;
-    const w = ctx.measureText(obj.content).width + padding * 2;
-    const h = parseInt(obj.size) + padding * 2;
+    let w, h;
+    if (obj._3dTextSize) {
+      w = obj._3dTextSize.w + padding * 2;
+      h = obj._3dTextSize.h + padding * 2;
+    } else {
+      ctx.font = `bold ${obj.size}px "${obj.font || "Montserrat"}"`;
+      w = ctx.measureText(obj.content).width + padding * 2;
+      h = parseInt(obj.size) + padding * 2;
+    }
     const x = obj.x - w / 2,
       y = obj.y - h / 2;
     const radius = Math.min(30, w / 5, h / 5);
@@ -202,25 +208,75 @@ export function generate3DObject(obj, cx, cy) {
       );
       mesh.castShadow = true;
     }
-  } else if (obj.type === "text" && state3d.loaded3DFont) {
-    const material = createMaterial(obj.color || "#ffcc00", matType);
-    const textGeo = new TextGeometry(obj.content, {
-      font: state3d.loaded3DFont,
-      size: parseInt(obj.size),
-      height: depth,
-      curveSegments: 6,
-      bevelEnabled: true,
-      bevelThickness: 1.5,
-      bevelSize: 0.8,
-      bevelSegments: 4,
-    });
-    textGeo.computeBoundingBox();
-    const box = textGeo.boundingBox;
-    const cxOff = (box.min.x + box.max.x) / 2;
-    const cyOff = (box.min.y + box.max.y) / 2;
-    mesh = new THREE.Mesh(textGeo, material);
-    mesh.position.set(obj.x - cx - cxOff, -(obj.y - cy) - cyOff, depth / 2);
-    mesh.castShadow = true;
+  } else if (obj.type === "text") {
+    // If text contains Cyrillic, many three.js typeface JSON fonts (e.g. Helvetiker)
+    // won't have glyphs. Fallback to drawing text on a canvas and use a
+    // CanvasTexture mapped to a plane. For Latin-only text, use TextGeometry
+    // when a proper 3D font is loaded.
+    const containsCyr = /[\u0400-\u04FF]/.test(obj.content);
+    if (!containsCyr && state3d.loaded3DFont) {
+      const material = createMaterial(obj.color || "#ffcc00", matType);
+      const textGeo = new TextGeometry(obj.content, {
+        font: state3d.loaded3DFont,
+        size: parseInt(obj.size),
+        height: depth,
+        curveSegments: 6,
+        bevelEnabled: true,
+        bevelThickness: 1.5,
+        bevelSize: 0.8,
+        bevelSegments: 4,
+      });
+      textGeo.computeBoundingBox();
+      const box = textGeo.boundingBox;
+      const cxOff = (box.min.x + box.max.x) / 2;
+      const cyOff = (box.min.y + box.max.y) / 2;
+      mesh = new THREE.Mesh(textGeo, material);
+      mesh.position.set(obj.x - cx - cxOff, -(obj.y - cy) - cyOff, depth / 2);
+      mesh.castShadow = true;
+      // If previously had canvas-size cache, remove it because TextGeometry defines size
+      if (obj._3dTextSize) delete obj._3dTextSize;
+    } else {
+      // Render text to canvas to support Cyrillic and arbitrary fonts.
+      const fontName = obj.font || "Montserrat";
+      const fontSize = parseInt(obj.size) || 60;
+      ctx.save();
+      ctx.font = `bold ${fontSize}px "${fontName}"`;
+      const metrics = ctx.measureText(obj.content);
+      const textW = Math.ceil(metrics.width) + 20;
+      const textH = Math.ceil(fontSize * 1.4) + 20;
+      ctx.restore();
+
+      const canvas2D = document.createElement("canvas");
+      const ratio = window.devicePixelRatio || 1;
+      canvas2D.width = textW * ratio;
+      canvas2D.height = textH * ratio;
+      canvas2D.style.width = `${textW}px`;
+      canvas2D.style.height = `${textH}px`;
+      const ctx2D = canvas2D.getContext("2d");
+      ctx2D.scale(ratio, ratio);
+      ctx2D.clearRect(0, 0, textW, textH);
+      ctx2D.font = `bold ${fontSize}px "${fontName}"`;
+      ctx2D.textAlign = "center";
+      ctx2D.textBaseline = "middle";
+      // draw outline for better visibility
+      ctx2D.fillStyle = obj.color || "#ffcc00";
+      ctx2D.fillText(obj.content, textW / 2, textH / 2);
+
+      const texture = new THREE.CanvasTexture(canvas2D);
+      texture.needsUpdate = true;
+
+      const geometry = new THREE.PlaneGeometry(textW, textH);
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+      mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(obj.x - cx + textW / 2, -(obj.y - cy + textH / 2), depth / 2);
+      mesh.castShadow = true;
+      // Store rendered canvas text size so background generator can match it
+      obj._3dTextSize = { w: textW, h: textH };
+    }
   } else if (obj.type === "line") {
     const material = createMaterial(obj.color || "#ffcc00", matType);
     const points = [
