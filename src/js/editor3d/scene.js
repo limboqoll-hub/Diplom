@@ -125,18 +125,32 @@ export function animate3D() {
       console.error("animate3D render error:", err);
       try {
         if (state3d.objects3D && state3d.objects3D.length) {
-          state3d.objects3D.forEach((m, i) => {
+          let found = false;
+          for (let i = 0; i < state3d.objects3D.length && !found; i++) {
+            const m = state3d.objects3D[i];
             try {
-              if (!m) return;
+              if (!m || !m.material) continue;
               const info = {
                 idx: i,
                 userData: m.userData && m.userData.originalObj ? m.userData.originalObj.type : null,
-                materialType: m.material ? m.material.type : null,
-                materialProps: m.material ? Object.keys(m.material) : null,
+                materialType: m.material.type || null,
               };
-              console.log("mesh:", info);
-            } catch (e) {}
-          });
+              // if material has uniforms, check for undefined values
+              if (m.material.uniforms) {
+                for (const k of Object.keys(m.material.uniforms)) {
+                  const u = m.material.uniforms[k];
+                  if (!u || typeof u.value === "undefined") {
+                    console.error("Found material uniform with undefined value:", k, "mesh idx:", i, info);
+                    found = true;
+                    break;
+                  }
+                }
+              }
+              if (!found) console.log("mesh:", info);
+            } catch (e) {
+              console.error("error inspecting mesh", i, e);
+            }
+          }
         }
       } catch (e) {}
     }
@@ -174,19 +188,15 @@ export function applyGlowSettings() {
       // skip background meshes (contour/rect) to avoid occluding the image
       if (mesh.userData && mesh.userData.isBackground) continue;
       try {
-        if (mesh.material) {
+        if (mesh.material && mesh.material.isMeshStandardMaterial) {
           if (settings.imageGlow) {
-            if (mesh.material.emissiveMap !== undefined) {
-              mesh.material.emissiveMap = mesh.material.map || null;
-              mesh.material.emissive = new THREE.Color(0xffffff);
-              mesh.material.emissiveIntensity = 1.2;
-            } else {
-              mesh.material.emissive = new THREE.Color(0xffffff);
-              mesh.material.emissiveIntensity = 0.6;
-            }
+            // use existing map as emissiveMap so colors brighten
+            mesh.material.emissiveMap = mesh.material.map || null;
+            mesh.material.emissive = new THREE.Color(0xffffff);
+            mesh.material.emissiveIntensity = 1.2;
           } else {
-            if (mesh.material.emissiveMap !== undefined) mesh.material.emissiveMap = null;
-            if (mesh.material.emissive) mesh.material.emissiveIntensity = 0;
+            mesh.material.emissiveMap = null;
+            mesh.material.emissiveIntensity = 0;
           }
           mesh.material.needsUpdate = true;
         }
@@ -196,7 +206,7 @@ export function applyGlowSettings() {
     // Text: set emissive color to text color
     if (obj.type === "text") {
       try {
-        if (mesh.material) {
+        if (mesh.material && mesh.material.isMeshStandardMaterial) {
           if (settings.textGlow) {
             mesh.material.emissive = new THREE.Color(obj.color || "#ffcc00");
             mesh.material.emissiveIntensity = 1.0;
@@ -205,7 +215,7 @@ export function applyGlowSettings() {
             mesh.add(l);
             mesh.userData._glowLight = l;
           } else {
-            if (mesh.material.emissive) mesh.material.emissiveIntensity = 0;
+            mesh.material.emissiveIntensity = 0;
           }
           mesh.material.needsUpdate = true;
         }

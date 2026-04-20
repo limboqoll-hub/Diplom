@@ -44,3 +44,10 @@ export const settings = {
   textGlow: false,
   imageGlow: false,
 };
+
+// View transform for 2D canvas (zoom & pan) — attach to state so other modules access via state.view
+state.view = {
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+};

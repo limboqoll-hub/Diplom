@@ -23,6 +23,27 @@ export function initCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   canvas.width = rect.width;
   canvas.height = rect.height - 30;
+  // initialize view offset to center canvas
+  state.view.offsetX = 0;
+  state.view.offsetY = 0;
+  state.view.scale = 1;
+
+  // wheel zoom
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const localX = e.clientX - rect.left;
+    const localY = e.clientY - rect.top;
+    const prevScale = state.view.scale;
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    let newScale = prevScale * zoomFactor;
+    newScale = Math.max(0.2, Math.min(5, newScale));
+    // adjust offset so zoom centers on mouse
+    state.view.offsetX = localX - (localX - state.view.offsetX) * (newScale / prevScale);
+    state.view.offsetY = localY - (localY - state.view.offsetY) * (newScale / prevScale);
+    state.view.scale = newScale;
+    render();
+  });
   render();
 }
 
@@ -42,7 +63,12 @@ export function undo() {
 
 export function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  // convert screen coords to world coords considering view transform
+  const localX = e.clientX - rect.left;
+  const localY = e.clientY - rect.top;
+  const x = (localX - state.view.offsetX) / state.view.scale;
+  const y = (localY - state.view.offsetY) / state.view.scale;
+  return { x, y };
 }
 
 // ======================== ХЕЛПЕРЫ ДЛЯ ТЕКСТА ========================
@@ -284,9 +310,14 @@ function drawRoundedRect(x, y, width, height, radius) {
 
 // ======================== РЕНДЕР ========================
 export function render() {
+  // reset transform to clear full canvas
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#f5f5f5";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // apply view transform (scale and pan)
+  ctx.setTransform(state.view.scale, 0, 0, state.view.scale, state.view.offsetX, state.view.offsetY);
 
   if (objCountDisplay) objCountDisplay.innerText = state.objects.length;
 
