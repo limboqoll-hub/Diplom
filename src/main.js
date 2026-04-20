@@ -27,7 +27,9 @@ import {
   thicknessSlider,
   thicknessVal,
 } from "./js/core/state.js";
+import { settings } from "./js/core/state.js";
 import { switchMode } from "./js/editor3d/controls.js";
+import { init3DScene, applyGlowSettings } from "./js/editor3d/scene.js";
 import {
   deleteLayer,
   exportAsImage,
@@ -46,6 +48,30 @@ window.deleteLayer = deleteLayer;
 window.distortBacking = () =>
   alert("Функция искривления подложки в разработке");
 window.fillGaps = () => alert("Функция заливки пустот в разработке");
+
+// Toggle glow settings (called from buttons in index.html)
+window.toggleTextGlow = function toggleTextGlow() {
+  settings.textGlow = !settings.textGlow;
+  const btn = document.getElementById("btn-text-glow");
+  if (btn) btn.innerText = settings.textGlow ? "Выкл. свечение текста" : "Вкл. свечение текста";
+  // apply settings immediately (if 3D scene exists, applyGlowSettings is a no-op otherwise)
+  try {
+    applyGlowSettings();
+  } catch (e) {
+    console.error('applyGlowSettings failed:', e);
+  }
+};
+
+window.toggleImageGlow = function toggleImageGlow() {
+  settings.imageGlow = !settings.imageGlow;
+  const btn = document.getElementById("btn-image-glow");
+  if (btn) btn.innerText = settings.imageGlow ? "Выкл. свечение изображения" : "Вкл. свечение изображения";
+  try {
+    applyGlowSettings();
+  } catch (e) {
+    console.error('applyGlowSettings failed:', e);
+  }
+};
 
 // ======================== ОБРАБОТЧИКИ МЫШИ НА ХОЛСТЕ ========================
 canvas.addEventListener("mousedown", (e) => {

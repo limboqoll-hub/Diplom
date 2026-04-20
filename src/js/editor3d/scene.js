@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { canvas, state } from "../core/state.js";
+import { canvas, state, settings } from "../core/state.js";
 import { generate3DBackground, generate3DObject } from "./objects.js";
 import { state3d } from "./state3d.js";
 
@@ -118,8 +118,29 @@ export function animate3D() {
   if (state3d.currentModeView !== "3d" || !state3d.renderer) return;
   requestAnimationFrame(animate3D);
   if (state3d.controls) state3d.controls.update();
-  if (state3d.renderer && state3d.scene && state3d.camera)
-    state3d.renderer.render(state3d.scene, state3d.camera);
+  if (state3d.renderer && state3d.scene && state3d.camera) {
+    try {
+      state3d.renderer.render(state3d.scene, state3d.camera);
+    } catch (err) {
+      console.error("animate3D render error:", err);
+      try {
+        if (state3d.objects3D && state3d.objects3D.length) {
+          state3d.objects3D.forEach((m, i) => {
+            try {
+              if (!m) return;
+              const info = {
+                idx: i,
+                userData: m.userData && m.userData.originalObj ? m.userData.originalObj.type : null,
+                materialType: m.material ? m.material.type : null,
+                materialProps: m.material ? Object.keys(m.material) : null,
+              };
+              console.log("mesh:", info);
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
+  }
 }
 
 export function onWindowResize3D() {
@@ -130,4 +151,65 @@ export function onWindowResize3D() {
     state3d.camera.updateProjectionMatrix();
   }
   if (state3d.renderer) state3d.renderer.setSize(rect.width, rect.height);
+}
+
+// Apply glow/brightness settings to existing 3D meshes immediately
+export function applyGlowSettings() {
+  if (!state3d.scene || !state3d.objects3D) return;
+  for (const mesh of state3d.objects3D) {
+    if (!mesh || !mesh.userData) continue;
+    const obj = mesh.userData.originalObj;
+    if (!obj) continue;
+
+    // remove previous helper glow light if present
+    if (mesh.userData._glowLight) {
+      try {
+        mesh.remove(mesh.userData._glowLight);
+      } catch (e) {}
+      delete mesh.userData._glowLight;
+    }
+
+    // Images: use emissiveMap for brightness
+    if (obj.type === "image") {
+      // skip background meshes (contour/rect) to avoid occluding the image
+      if (mesh.userData && mesh.userData.isBackground) continue;
+      try {
+        if (mesh.material) {
+          if (settings.imageGlow) {
+            if (mesh.material.emissiveMap !== undefined) {
+              mesh.material.emissiveMap = mesh.material.map || null;
+              mesh.material.emissive = new THREE.Color(0xffffff);
+              mesh.material.emissiveIntensity = 1.2;
+            } else {
+              mesh.material.emissive = new THREE.Color(0xffffff);
+              mesh.material.emissiveIntensity = 0.6;
+            }
+          } else {
+            if (mesh.material.emissiveMap !== undefined) mesh.material.emissiveMap = null;
+            if (mesh.material.emissive) mesh.material.emissiveIntensity = 0;
+          }
+          mesh.material.needsUpdate = true;
+        }
+      } catch (e) {}
+    }
+
+    // Text: set emissive color to text color
+    if (obj.type === "text") {
+      try {
+        if (mesh.material) {
+          if (settings.textGlow) {
+            mesh.material.emissive = new THREE.Color(obj.color || "#ffcc00");
+            mesh.material.emissiveIntensity = 1.0;
+            // add small point light so glow is visible in scene
+            const l = new THREE.PointLight(obj.color || "#ffcc00", 0.6, 200);
+            mesh.add(l);
+            mesh.userData._glowLight = l;
+          } else {
+            if (mesh.material.emissive) mesh.material.emissiveIntensity = 0;
+          }
+          mesh.material.needsUpdate = true;
+        }
+      } catch (e) {}
+    }
+  }
 }

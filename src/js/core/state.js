@@ -38,3 +38,9 @@ export const opacityInput = document.getElementById("opacityInput");
 export const bgTypeSelect = document.getElementById("bgTypeSelect");
 export const bgPaddingInput = document.getElementById("bgPadding");
 export const bgColorPicker = document.getElementById("bg-color-picker");
+
+// Global UI/settings flags
+export const settings = {
+  textGlow: false,
+  imageGlow: false,
+};

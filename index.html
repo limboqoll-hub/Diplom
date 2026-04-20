@@ -66,9 +66,10 @@
                 <span>Шрифт:</span>
                 <select id="fontSelect" class="form-select bg-dark text-white border-secondary">
                     <option value="Montserrat">Montserrat</option>
-                    <option value="Bebas Neue">Bebas Neue</option>
-                    <option value="Pacifico">Pacifico</option>
-                    <option value="Ruslan Display">Ruslan</option>
+                        <option value="Bebas Neue">Bebas Neue</option>
+                        <option value="Pacifico">Pacifico</option>
+                        <option value="Ruslan Display">Ruslan Display</option>
+                        <option value="Oswald">Oswald</option>
                 </select>
             </div>
             <div class="prop-item mb-3">
@@ -169,6 +170,13 @@
         </div>
 
         <hr class="border-secondary mt-4">
+        <div class="prop-item mb-2">
+            <button id="btn-text-glow" class="btn btn-outline-warning w-100" onclick="toggleTextGlow()">Вкл. свечение текста</button>
+        </div>
+        <div class="prop-item mb-3">
+            <button id="btn-image-glow" class="btn btn-outline-warning w-100" onclick="toggleImageGlow()">Вкл. свечение изображения</button>
+        </div>
+        <hr class="border-secondary mt-2">
         <button class="btn btn-outline-success w-100" onclick="alert('Рендер реалистичной картинки...')">📸 Фотореалистичный рендер</button>
     </aside>
 </div>
