@@ -29,12 +29,17 @@
                 <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-rect" title="Прямоугольник">□</button>
                 <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-curve" title="Изогнутый неон">S</button>
                 <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-bg-brush" title="Кисть подложки">🖌️</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-brush" title="Кисть">✒️</button>
+                <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-lasso" title="Лассо/Многоугольное выделение">🔺</button>
                 <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-bg-eraser" title="Ластик подложки">✂️</button>
                 <button class="tool-btn d-flex align-items-center justify-content-center" id="btn-undo" title="Назад (Ctrl+Z)">↶</button>
                 <button class="tool-btn d-flex align-items-center justify-content-center text-danger" id="btn-clear" title="Очистить">✖</button>
             </div>
             <button id="btn-group" class="btn btn-secondary btn-sm w-100 mt-1" disabled>
                 <i class="fas fa-object-group"></i> Сгруппировать
+            </button>
+            <button id="btn-cut" class="btn btn-warning btn-sm w-100 mt-1">
+                ✂️ Вырезать (копия)
             </button>
             <button id="btn-ungroup" class="btn btn-danger btn-sm w-100 mt-1" style="display: none;">
                 <i class="fas fa-object-ungroup"></i> Разгруппировать
@@ -75,6 +80,21 @@
             <div class="prop-item mb-3">
                 <span>Размер шрифта:</span>
                 <input type="range" id="sizeSlider" min="20" max="150" value="60">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Кисть - размер:</span>
+                <input type="range" id="brushSize" min="1" max="200" value="30">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Кисть - прозрачность:</span>
+                <input type="range" id="brushOpacity" min="0" max="1" step="0.05" value="1">
+            </div>
+            <div class="prop-item mb-3">
+                <span>Тип кисти:</span>
+                <select id="brushType" class="form-select bg-dark text-white border-secondary">
+                    <option value="round">Круглая</option>
+                    <option value="soft">Мягкая</option>
+                </select>
             </div>
             <div class="prop-item mb-3">
                 <span>Толщина неона (мм):</span>

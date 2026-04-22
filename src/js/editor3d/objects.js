@@ -517,6 +517,73 @@ export function generate3DObject(obj, cx, cy) {
     );
     mesh.castShadow = true;
   }
+  else if (obj.type === "paint") {
+    // Render paint stroke to a canvas and map it to a plane texture
+    if (obj.points && obj.points.length > 0) {
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const p of obj.points) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const padding = (obj.size || 10) * 1.5;
+      const w = Math.max(1, Math.ceil(maxX - minX + padding * 2));
+      const h = Math.max(1, Math.ceil(maxY - minY + padding * 2));
+
+      const canvas2D = document.createElement("canvas");
+      const ratio = window.devicePixelRatio || 1;
+      canvas2D.width = Math.ceil(w * ratio);
+      canvas2D.height = Math.ceil(h * ratio);
+      canvas2D.style.width = `${w}px`;
+      canvas2D.style.height = `${h}px`;
+      const ctx2D = canvas2D.getContext("2d");
+      ctx2D.scale(ratio, ratio);
+      ctx2D.clearRect(0, 0, w, h);
+
+      ctx2D.lineCap = "round";
+      ctx2D.lineJoin = "round";
+      ctx2D.strokeStyle = obj.color || "#000";
+      ctx2D.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1;
+      ctx2D.lineWidth = obj.size || 10;
+      if (obj.brushType === "soft") {
+        // soft brush approximation: draw multiple semi-transparent strokes
+        ctx2D.shadowColor = obj.color || "#000";
+        ctx2D.shadowBlur = Math.max(1, (obj.size || 10) / 2);
+      }
+
+      ctx2D.beginPath();
+      // draw relative to top-left (minX - padding, minY - padding)
+      const offX = -minX + padding;
+      const offY = -minY + padding;
+      ctx2D.moveTo(obj.points[0].x + offX, obj.points[0].y + offY);
+      for (let i = 1; i < obj.points.length; i++) {
+        const p = obj.points[i];
+        ctx2D.lineTo(p.x + offX, p.y + offY);
+      }
+      ctx2D.stroke();
+
+      const texture = new THREE.CanvasTexture(canvas2D);
+      texture.needsUpdate = true;
+
+      const geometry = new THREE.PlaneGeometry(w, h);
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      mesh = new THREE.Mesh(geometry, material);
+      // position: center of bbox
+      const centerX = minX + (maxX - minX) / 2;
+      const centerY = minY + (maxY - minY) / 2;
+      mesh.position.set(centerX - cx, -(centerY - cy), depth / 2);
+      mesh.castShadow = true;
+    }
+  }
 
   if (mesh) {
     mesh.userData = { originalObj: obj, isBackground: false };

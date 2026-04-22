@@ -16,6 +16,7 @@ export const state = {
   currentMousePos: null,
   activeCurve: null,
   bgPath: [],
+  paintPath: [],
 };
 
 export const renderCache = {};
@@ -38,6 +39,11 @@ export const opacityInput = document.getElementById("opacityInput");
 export const bgTypeSelect = document.getElementById("bgTypeSelect");
 export const bgPaddingInput = document.getElementById("bgPadding");
 export const bgColorPicker = document.getElementById("bg-color-picker");
+
+// Brush controls
+export const brushSize = document.getElementById("brushSize");
+export const brushOpacity = document.getElementById("brushOpacity");
+export const brushType = document.getElementById("brushType");
 
 // Global UI/settings flags
 export const settings = {

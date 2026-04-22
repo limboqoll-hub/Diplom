@@ -26,6 +26,9 @@ import {
   textOrientation,
   thicknessSlider,
   thicknessVal,
+  brushSize,
+  brushOpacity,
+  brushType,
 } from "./js/core/state.js";
 import { settings } from "./js/core/state.js";
 import { switchMode } from "./js/editor3d/controls.js";
@@ -39,6 +42,7 @@ import {
   moveLayer,
   ungroupSelectedObjects,
 } from "./js/layers/layers.js";
+import { selectByPoints, cutSelectedObjects, setSelection, clearSelection } from "./js/layers/layers.js";
 
 // ======================== ГЛОБАЛЬНЫЕ ФУНКЦИИ (для onclick в HTML) ========================
 window.switchMode = switchMode;
@@ -48,6 +52,8 @@ window.deleteLayer = deleteLayer;
 window.distortBacking = () =>
   alert("Функция искривления подложки в разработке");
 window.fillGaps = () => alert("Функция заливки пустот в разработке");
+
+window.cutSelectedObjects = cutSelectedObjects;
 
 // Toggle glow settings (called from buttons in index.html)
 window.toggleTextGlow = function toggleTextGlow() {
@@ -82,14 +88,24 @@ canvas.addEventListener("mousedown", (e) => {
     state.bgPath = [pos];
     return;
   }
+  if (state.currentMode === "brush") {
+    state.isDrawing = true;
+    state.paintPath = [pos];
+    return;
+  }
+
+  if (state.currentMode === "lasso") {
+    state.isLasso = true;
+    state.lassoPoints = [pos];
+    render();
+    return;
+  }
 
   if (state.currentMode === "select") {
     const hit = findObjectAt(pos);
     if (hit) {
-      state.selectedObjects = hit.groupId
-        ? state.objects.filter((o) => o.groupId === hit.groupId)
-        : [hit];
-      state.selectedObj = hit;
+      const sel = hit.groupId ? state.objects.filter((o) => o.groupId === hit.groupId) : [hit];
+      setSelection(sel);
       state.isDragging = true;
       saveHistory();
 
@@ -101,8 +117,7 @@ canvas.addEventListener("mousedown", (e) => {
       state.dragOffset.y = pos.y - anchorY;
       render();
     } else {
-      state.selectedObjects = [];
-      state.selectedObj = null;
+      clearSelection();
       state.isSelecting = true;
       state.selectionStart = { ...pos };
       state.selectionEnd = { ...pos };
@@ -150,6 +165,17 @@ canvas.addEventListener("mousemove", (e) => {
     (state.currentMode === "bg-brush" || state.currentMode === "bg-eraser")
   ) {
     state.bgPath.push(pos);
+    render();
+    return;
+  }
+  if (state.isDrawing && state.currentMode === "brush") {
+    state.paintPath.push(pos);
+    render();
+    return;
+  }
+  if (state.isLasso && state.currentMode === "lasso") {
+    // add point to lasso path while dragging
+    state.lassoPoints.push(pos);
     render();
     return;
   }
@@ -209,6 +235,22 @@ canvas.addEventListener("mousemove", (e) => {
 });
 
 canvas.addEventListener("mouseup", () => {
+  if (state.isLasso && state.currentMode === "lasso") {
+    // finish lasso selection
+    try {
+      selectByPoints(state.lassoPoints || []);
+    } catch (e) {}
+    state.isLasso = false;
+    state.lassoPoints = [];
+    // switch to select mode so selection frames are visible and actions (cut/group) apply
+    state.currentMode = "select";
+    // update UI tool button active state
+    document.querySelectorAll(".tool-btn").forEach((b) => b.classList.remove("active"));
+    const selBtn = document.getElementById("btn-select");
+    if (selBtn) selBtn.classList.add("active");
+    render();
+    return;
+  }
   if (
     state.isDrawing &&
     (state.currentMode === "bg-brush" || state.currentMode === "bg-eraser")
@@ -236,14 +278,10 @@ canvas.addEventListener("mouseup", () => {
       const rh = Math.abs(state.selectionEnd.y - state.selectionStart.y);
       if (rw > 10 && rh > 10) {
         const selRect = { x: rx, y: ry, w: rw, h: rh };
-        state.selectedObjects = state.objects.filter((obj) =>
-          isObjectInRect(obj, selRect),
-        );
-        state.selectedObj =
-          state.selectedObjects.length === 1 ? state.selectedObjects[0] : null;
+        const selected = state.objects.filter((obj) => isObjectInRect(obj, selRect));
+        setSelection(selected);
       } else {
-        state.selectedObjects = [];
-        state.selectedObj = null;
+        clearSelection();
       }
     }
     state.selectionStart = null;
@@ -309,6 +347,17 @@ canvas.addEventListener("mouseup", () => {
         zOffset3d: 0,
       };
       state.isBending = true;
+    } else if (state.currentMode === "brush") {
+      state.objects.push({
+        type: "paint",
+        points: [...state.paintPath],
+        color: colorPicker.value,
+        size: parseInt(brushSize?.value || 10),
+        opacity: parseFloat(brushOpacity?.value || 1),
+        brushType: brushType?.value || "round",
+        ...sharedProps,
+      });
+      state.paintPath = [];
     }
 
     state.isDrawing = false;
@@ -431,8 +480,7 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
       if (confirm("Очистить всё?")) {
         saveHistory();
         state.objects = [];
-        state.selectedObjects = [];
-        state.selectedObj = null;
+        clearSelection();
         render();
       }
       return;
@@ -447,8 +495,7 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
       .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.currentMode = btn.id.replace("btn-", "");
-    state.selectedObj = null;
-    state.selectedObjects = [];
+    clearSelection();
     state.isBending = false;
     render();
   });
@@ -456,6 +503,9 @@ document.querySelectorAll(".tool-btn").forEach((btn) => {
 
 const groupBtn = document.getElementById("btn-group");
 if (groupBtn) groupBtn.addEventListener("click", groupSelectedObjects);
+
+const cutBtn = document.getElementById("btn-cut");
+if (cutBtn) cutBtn.addEventListener("click", () => cutSelectedObjects());
 
 const ungroupBtn = document.getElementById("btn-ungroup");
 if (ungroupBtn) ungroupBtn.addEventListener("click", ungroupSelectedObjects);

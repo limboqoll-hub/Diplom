@@ -13,10 +13,14 @@ import {
   renderCache,
   sizeSlider,
   state,
+  brushSize,
+  brushOpacity,
+  brushType,
   textOrientation,
   thicknessSlider,
   thicknessVal,
 } from "../core/state.js";
+import { clearSelection, setSelection } from "../layers/layers.js";
 
 // ======================== ИНИЦИАЛИЗАЦИЯ ХОЛСТА ========================
 export function initCanvas() {
@@ -55,8 +59,7 @@ export function saveHistory() {
 export function undo() {
   if (state.history.length > 0) {
     state.objects = JSON.parse(state.history.pop());
-    state.selectedObj = null;
-    state.selectedObjects = [];
+    clearSelection();
     render();
   }
 }
@@ -219,6 +222,7 @@ function drawObjectBackground(obj) {
 }
 
 function drawObject(obj) {
+  if (obj.hidden) return;
   if (obj.type === "bg-patch") {
     ctx.beginPath();
     ctx.strokeStyle = obj.mode === "erase" ? "#f5f5f5" : obj.color || "#000000";
@@ -231,6 +235,32 @@ function drawObject(obj) {
         ctx.lineTo(obj.points[i].x, obj.points[i].y);
       ctx.stroke();
     }
+    return;
+  }
+
+  if (obj.type === "paint") {
+    ctx.beginPath();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = obj.color || "#000";
+    ctx.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1;
+    ctx.lineWidth = obj.size || 10;
+    if (obj.brushType === "soft") {
+      ctx.shadowColor = obj.color || "#000";
+      ctx.shadowBlur = Math.max(1, (obj.size || 10) / 2);
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    if (obj.points && obj.points.length > 0) {
+      ctx.moveTo(obj.points[0].x, obj.points[0].y);
+      for (let i = 1; i < obj.points.length; i++) {
+        const p = obj.points[i];
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
     return;
   }
 
@@ -322,6 +352,44 @@ export function render() {
   if (objCountDisplay) objCountDisplay.innerText = state.objects.length;
 
   state.objects.forEach(drawObject);
+
+  // draw live brush preview while drawing (not yet committed)
+  if (state.isDrawing && state.currentMode === "brush" && state.paintPath && state.paintPath.length) {
+    ctx.save();
+    const tmp = state.paintPath;
+    ctx.beginPath();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = colorPicker.value || "#000";
+    ctx.globalAlpha = parseFloat(brushOpacity?.value || 1);
+    ctx.lineWidth = parseInt(brushSize?.value || 10);
+    if ((brushType && brushType.value) === "soft") {
+      ctx.shadowColor = colorPicker.value || "#000";
+      ctx.shadowBlur = Math.max(1, (parseInt(brushSize?.value || 10) / 2));
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    ctx.moveTo(tmp[0].x, tmp[0].y);
+    for (let i = 1; i < tmp.length; i++) ctx.lineTo(tmp[i].x, tmp[i].y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // draw lasso (polygon) preview when active
+  if (state.isLasso && state.lassoPoints && state.lassoPoints.length) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = "#007bff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.moveTo(state.lassoPoints[0].x, state.lassoPoints[0].y);
+    for (let i = 1; i < state.lassoPoints.length; i++) {
+      ctx.lineTo(state.lassoPoints[i].x, state.lassoPoints[i].y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
 
   if (state.currentMode === "select") renderSelectionFrames();
 
@@ -466,6 +534,20 @@ export function renderSelectionFrames() {
       ctx.strokeRect(obj.x - w / 2 - 10, obj.y - h / 2 - 10, w + 20, h + 20);
     } else if (obj.type === "image") {
       ctx.strokeRect(obj.x - 5, obj.y - 5, obj.w + 10, obj.h + 10);
+    } else if (obj.type === "paint") {
+      if (!obj.points || obj.points.length === 0) return;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const p of obj.points) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const pad = (obj.size || 10) / 2 + 4;
+      ctx.strokeRect(minX - pad - 5, minY - pad - 5, maxX - minX + pad * 2 + 10, maxY - minY + pad * 2 + 10);
     } else if (obj.type === "rect") {
       const x = Math.min(obj.x1, obj.x2),
         y = Math.min(obj.y1, obj.y2);
@@ -598,8 +680,7 @@ export function updateLayersPanel() {
 
       saveHistory();
       state.objects = newObjects;
-      state.selectedObj = null;
-      state.selectedObjects = [];
+      clearSelection();
       render();
     });
 
@@ -608,11 +689,11 @@ export function updateLayersPanel() {
     div.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
       if (layer.isGroup) {
-        state.selectedObjects = state.objects.filter((o) => o.groupId === layer.id);
-        state.selectedObj = state.selectedObjects[0];
+        const sel = state.objects.filter((o) => o.groupId === layer.id);
+        setSelection(sel);
       } else {
-        state.selectedObj = state.objects.find((o) => o.id === layer.id);
-        state.selectedObjects = [state.selectedObj];
+        const obj = state.objects.find((o) => o.id === layer.id);
+        setSelection(obj ? [obj] : []);
       }
       render();
     });
