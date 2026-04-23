@@ -30,7 +30,7 @@ function getImageAverageColor(img) {
       b = 0,
       count = 0;
     for (let i = 0; i < data.length; i += 4) {
-      const alpha = data[i + 3];
+      const alpha = data[i + 3];X
       if (alpha === 0) continue;
       r += data[i];
       g += data[i + 1];
